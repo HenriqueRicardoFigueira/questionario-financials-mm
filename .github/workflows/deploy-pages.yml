@@ -1,0 +1,58 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create config.js
+        env:
+          APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+          SUBMIT_TOKEN: ${{ secrets.SUBMIT_TOKEN }}
+          SURVEY_TITLE: ${{ secrets.SURVEY_TITLE }}
+          LOGO_URL: ${{ secrets.LOGO_URL }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const cfg = {
+            surveyTitle: process.env.SURVEY_TITLE || 'Pesquisa Financials MM',
+            appsScriptUrl: process.env.APPS_SCRIPT_URL || '',
+            submitToken: process.env.SUBMIT_TOKEN || '',
+            logoUrl: process.env.LOGO_URL || ''
+          };
+          fs.writeFileSync(
+            'config.js',
+            'window.PESQUISA_CONFIG = ' + JSON.stringify(cfg, null, 2) + ';\n'
+          );
+          NODE
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
