@@ -1,21 +1,16 @@
 /**
- * Questionário: Experiência — Antecipação de Recebíveis
+ * Questionário: Antecipação de Recebíveis — 6 perguntas
  * Edite msgs, opções e keys conforme necessário.
  */
 
 window.PESQUISA_QUESTIONS = [
   {
-    msgs: [
-      'Olá, parceiro. 👋',
-      'Estamos trabalhando para aprimorar nossos serviços financeiros e gostaríamos de ouvir a sua opinião real sobre o processo de antecipação de recebíveis.',
-      'Este questionário leva menos de 2 minutos e suas respostas são fundamentais para os nossos próximos lançamentos.'
-    ],
-    action: { type: 'single', opts: ['Vamos lá', 'Pode começar'] }
-  },
-
-  {
     key: 'q1',
-    msgs: ['Qual é o modelo da sua parceria atual com a MadeiraMadeira?'],
+    label: 'Perfil',
+    msgs: [
+      'Olá! 👋 Sou o assistente de pesquisa da MadeiraMadeira. Vou te fazer 6 perguntas rápidas sobre o processo de antecipação. Pode levar menos de 3 minutos!',
+      'Primeiro: qual é o modelo da sua parceria atual com a MadeiraMadeira?'
+    ],
     action: {
       type: 'single',
       opts: [
@@ -28,6 +23,7 @@ window.PESQUISA_QUESTIONS = [
 
   {
     key: 'q2',
+    label: 'Frequência de uso',
     msgs: [
       'Com que frequência você acessa os nossos portais para consultar ou realizar antecipações?'
     ],
@@ -44,77 +40,94 @@ window.PESQUISA_QUESTIONS = [
 
   {
     key: 'q3',
+    label: 'Satisfação atual',
     msgs: [
-      'Em uma escala de 1 a 5, quão satisfeito você está com a experiência geral do processo atual de antecipação?'
+      'Em uma escala de 1 a 5, qual é o seu nível de satisfação com a experiência geral do processo atual de antecipação?'
     ],
     action: {
-      type: 'single',
-      opts: [
-        '1 – Muito insatisfeito',
-        '2 – Insatisfeito',
-        '3 – Neutro',
-        '4 – Satisfeito',
-        '5 – Muito satisfeito'
-      ]
+      type: 'scale',
+      min: 1,
+      max: 5,
+      confirm: true,
+      l0: '1 Muito insatisfeito',
+      l10: '5 Muito satisfeito',
+      scaleLabels: {
+        1: 'Muito insatisfeito',
+        2: 'Insatisfeito',
+        3: 'Neutro',
+        4: 'Satisfeito',
+        5: 'Muito satisfeito'
+      }
     }
   },
 
   {
     key: 'q4',
+    label: 'Mapeamento de dores',
     msgs: [
-      'Qual das seguintes etapas exige mais esforço ou gera mais dúvidas na sua rotina de antecipação?',
-      'Selecione até 2 opções.'
+      'Qual das etapas abaixo exige mais esforço ou gera mais dúvidas na sua rotina de antecipação? Selecione até 2 opções.'
     ],
     action: {
       type: 'multi',
       max: 2,
       opts: [
         'Fazer login e navegar por portais diferentes',
-        'Entender o saldo real que está disponível para antecipar',
-        'Compreender as taxas aplicadas e o valor líquido final',
-        'O tempo de espera entre a solicitação e o depósito do dinheiro',
-        'Realizar a conciliação do extrato (bater o que foi pago com as notas)',
-        'Nenhuma das opções (O processo atual atende perfeitamente à minha empresa)'
+        'Entender o saldo real disponível para antecipar',
+        'Compreender as taxas e o valor líquido final',
+        'O tempo de espera entre solicitação e depósito',
+        'Conciliação do extrato (bater pagamentos com notas)',
+        'Nenhuma — o processo atual atende perfeitamente'
       ]
     }
   },
 
   {
     key: 'q5',
+    label: 'Interesse no WhatsApp',
     msgs: [
-      'Se a simulação e a contratação de antecipações estivessem disponíveis através de uma conta oficial e segura no WhatsApp, qual seria o seu nível de interesse em utilizar esse canal?'
+      'Se a simulação e contratação de antecipações estivessem disponíveis via WhatsApp oficial e seguro da MadeiraMadeira, qual seria seu nível de interesse?'
     ],
     action: {
-      type: 'single',
-      opts: [
-        '1 – Nenhum interesse (Prefiro manter exclusivamente via Portal Web)',
-        '2 – Pouco interesse',
-        '3 – Neutro',
-        '4 – Interessado',
-        '5 – Muito interessado'
-      ]
+      type: 'scale',
+      min: 1,
+      max: 5,
+      confirm: true,
+      l0: '1 Nenhum interesse',
+      l10: '5 Muito interessado',
+      scaleLabels: {
+        1: 'Nenhum interesse',
+        2: 'Pouco interesse',
+        3: 'Neutro',
+        4: 'Interessado',
+        5: 'Muito interessado'
+      }
     }
   },
 
   {
     key: 'q6',
+    label: 'Fator de decisão',
     msgs: [
-      'Qual é o fator principal que influenciaria a sua decisão de adotar ou não o WhatsApp para antecipações?'
+      'Por último: qual é o fator principal que influenciaria sua decisão de adotar (ou não) o WhatsApp para antecipações?'
     ],
     action: {
       type: 'single',
+      confirm: true,
+      outro: 'Outro motivo',
       opts: [
-        'A praticidade de simular o saldo sem precisar acessar um navegador de internet',
-        'Preocupação com a segurança da informação e validação de quem está operando',
-        'A facilidade de passar a operação para a equipe de campo/operacional do celular',
-        'A preferência cultural e corporativa de resolver finanças apenas por computadores',
-        'Outro'
+        'Praticidade de simular sem abrir navegador',
+        'Preocupação com segurança e validação de identidade',
+        'Facilidade de delegar a operação ao time de campo',
+        'Preferência por resolver finanças apenas no computador',
+        'Outro motivo'
       ]
     }
   }
 ];
 
 window.PESQUISA_END = {
+  showSummary: true,
+  summaryTitle: 'Resumo das suas respostas',
   botMessages: [
     'Perfeito, isso foi tudo! 🎉',
     'Muito obrigado por compartilhar sua experiência conosco.'

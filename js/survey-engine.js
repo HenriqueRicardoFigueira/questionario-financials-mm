@@ -16,6 +16,9 @@
   let step = 0;
   let answers = {};
   let multi = [];
+  let pendingScale = null;
+  let pendingSingle = null;
+  let outroTextMode = false;
 
   function sanitizeParam(value, maxLen) {
     if (!value) return '';
@@ -45,6 +48,15 @@
       utm_source: sanitizeParam(params.get('utm_source'), 64),
       utm_campaign: sanitizeParam(params.get('utm_campaign'), 64)
     };
+  }
+
+  function currentQuestion() {
+    return qs[step] || null;
+  }
+
+  function currentAction() {
+    const q = currentQuestion();
+    return q && q.action ? q.action : {};
   }
 
   function scrollDown() {
@@ -114,18 +126,67 @@
   }
 
   function updProg() {
-    const pct = step === 0 ? 0 : Math.round((step / TOTAL) * 100);
+    const answered = Object.keys(answers).filter(function (k) { return /^q\d+$/.test(k); }).length;
+    const pct = TOTAL ? Math.round((answered / TOTAL) * 100) : 0;
     document.getElementById('pFill').style.width = pct + '%';
-    document.getElementById('pLbl').textContent = step + '/' + TOTAL;
+    document.getElementById('pLbl').textContent = answered + '/' + TOTAL;
+  }
+
+  function resetPending() {
+    pendingScale = null;
+    pendingSingle = null;
+    outroTextMode = false;
+  }
+
+  function showConfirm(visible, enabled, label) {
+    const cfm = document.getElementById('cfm');
+    if (!visible) {
+      cfm.classList.add('hidden');
+      cfm.style.display = 'none';
+      cfm.disabled = false;
+      return;
+    }
+    cfm.classList.remove('hidden');
+    cfm.style.display = 'block';
+    cfm.disabled = !enabled;
+    cfm.textContent = label || 'Confirmar →';
   }
 
   function hideInput() {
     document.getElementById('opts').classList.add('hidden');
-    const cfm = document.getElementById('cfm');
-    cfm.classList.add('hidden');
-    cfm.style.display = 'none';
-    document.getElementById('txtWrap').classList.add('hidden');
+    showConfirm(false);
+    const tw = document.getElementById('txtWrap');
+    tw.classList.add('hidden');
+    tw.classList.remove('outro-inline');
     document.getElementById('scl').classList.add('hidden');
+    resetPending();
+  }
+
+  function highlightSingleOption(val) {
+    document.querySelectorAll('.opt').forEach(function (b) {
+      b.classList.toggle('sel', b.textContent === val);
+    });
+  }
+
+  function showOutroField(ph) {
+    const tw = document.getElementById('txtWrap');
+    const inp = document.getElementById('txtIn');
+    tw.classList.remove('hidden');
+    tw.classList.add('outro-inline');
+    inp.value = '';
+    inp.maxLength = MAX_TEXT_LEN;
+    inp.placeholder = ph || 'Descreva o motivo...';
+    inp.dataset.outro = '';
+    inp.dataset.outroKey = '';
+    setTimeout(function () { inp.focus(); }, 300);
+    updateOutroConfirmState();
+  }
+
+  function updateOutroConfirmState() {
+    if (!outroTextMode) return;
+    const inp = document.getElementById('txtIn');
+    const hasText = inp.value.trim().length > 0;
+    showConfirm(true, hasText, 'Confirmar →');
   }
 
   function showInput(q) {
@@ -139,6 +200,7 @@
     const min = action.min;
     const l0 = action.l0;
     const l10 = action.l10;
+    const cfm = document.getElementById('cfm');
 
     if (type === 'single' || type === 'multi') {
       const wrap = document.getElementById('opts');
@@ -157,9 +219,11 @@
         wrap.appendChild(b);
       });
       if (type === 'multi') {
-        const cfm = document.getElementById('cfm');
-        cfm.classList.remove('hidden');
-        cfm.style.display = 'none';
+        cfm.onclick = submitMulti;
+        showConfirm(true, false, 'Confirmar →');
+      } else if (action.confirm) {
+        cfm.onclick = submitConfirm;
+        showConfirm(false);
       }
     } else if (type === 'text') {
       const tw = document.getElementById('txtWrap');
@@ -168,8 +232,6 @@
       inp.value = '';
       inp.maxLength = MAX_TEXT_LEN;
       inp.placeholder = ph || 'Digite aqui...';
-      inp.dataset.outro = '';
-      inp.dataset.outroKey = '';
       setTimeout(function () { inp.focus(); }, 300);
     } else if (type === 'scale') {
       const sw = document.getElementById('scl');
@@ -195,32 +257,40 @@
       lbls.appendChild(right);
       sw.appendChild(nums);
       sw.appendChild(lbls);
+      if (action.confirm) {
+        cfm.onclick = submitConfirm;
+        showConfirm(false);
+      }
     }
     scrollDown();
   }
 
-  async function askOutro(key) {
-    await botSay(['Pode especificar? 😊'], 350);
-    const tw = document.getElementById('txtWrap');
-    tw.classList.remove('hidden');
-    const inp = document.getElementById('txtIn');
-    inp.value = '';
-    inp.maxLength = MAX_TEXT_LEN;
-    inp.placeholder = 'Conta pra gente...';
-    inp.dataset.outro = '1';
-    inp.dataset.outroKey = key;
-    setTimeout(function () { inp.focus(); }, 300);
-  }
-
   async function pickSingle(val) {
+    const action = currentAction();
+    const outroOpt = action.outro || 'Outro';
+
+    if (action.confirm) {
+      pendingSingle = val;
+      highlightSingleOption(val);
+      if (val === outroOpt) {
+        outroTextMode = true;
+        showOutroField('Descreva o outro motivo...');
+        return;
+      }
+      outroTextMode = false;
+      document.getElementById('txtWrap').classList.add('hidden');
+      document.getElementById('txtWrap').classList.remove('outro-inline');
+      showConfirm(true, true, 'Confirmar →');
+      return;
+    }
+
     hideInput();
     await addBubble(val, 'user');
-    const key = qs[step].key;
+    const key = currentQuestion().key;
     if (key) answers[key] = val;
     step++;
     updProg();
-    if (val === 'Outro') await askOutro(key);
-    else await nextStep();
+    await nextStep();
   }
 
   function toggleMulti(val, btn, max) {
@@ -233,9 +303,7 @@
       multi.push(val);
       btn.classList.add('sel');
     }
-    const cfm = document.getElementById('cfm');
-    cfm.style.display = multi.length > 0 ? 'block' : 'none';
-    cfm.textContent = multi.length > 0 ? 'Confirmar (' + multi.length + ') →' : 'Confirmar →';
+    showConfirm(true, multi.length > 0, multi.length > 0 ? 'Confirmar (' + multi.length + ') →' : 'Confirmar →');
   }
 
   async function submitMulti() {
@@ -243,51 +311,68 @@
     const val = multi.join(', ');
     hideInput();
     await addBubble(val, 'user');
-    const key = qs[step].key;
+    const key = currentQuestion().key;
     if (key) answers[key] = multi.slice();
     step++;
     updProg();
-    if (multi.includes('Outro')) await askOutro(key);
-    else await nextStep();
+    await nextStep();
   }
 
-  async function submitText() {
-    const inp = document.getElementById('txtIn');
-    const val = inp.value.trim().slice(0, MAX_TEXT_LEN);
-    if (!val) return;
-    const isOutro = inp.dataset.outro === '1';
-    const outroKey = inp.dataset.outroKey;
-    inp.dataset.outro = '';
-    inp.dataset.outroKey = '';
-    hideInput();
-    await addBubble(val, 'user');
-    if (isOutro) {
-      if (Array.isArray(answers[outroKey])) {
-        answers[outroKey] = answers[outroKey].map(function (v) {
-          return v === 'Outro' ? 'Outro: ' + val : v;
-        });
-      } else if (answers[outroKey] === 'Outro') {
-        answers[outroKey] = 'Outro: ' + val;
-      }
-      await nextStep();
-    } else {
-      if (qs[step].key) answers[qs[step].key] = val;
-      step++;
-      updProg();
-      await nextStep();
+  async function submitConfirm() {
+    if (pendingScale != null) {
+      await commitScale(pendingScale);
+      return;
+    }
+    if (pendingSingle != null) {
+      await commitSingle(pendingSingle);
     }
   }
 
-  async function pickScale(val, btn) {
-    document.querySelectorAll('.scl-btn').forEach(function (b) { b.classList.remove('sel'); });
-    btn.classList.add('sel');
-    await wait(220);
+  async function commitScale(val) {
     hideInput();
-    await addBubble(String(val), 'user');
-    if (qs[step].key) answers[qs[step].key] = val;
+    const labels = currentAction().scaleLabels || {};
+    const display = labels[val] ? val + ' – ' + labels[val] : String(val);
+    await addBubble(display, 'user');
+    const key = currentQuestion().key;
+    if (key) answers[key] = val;
     step++;
     updProg();
     await nextStep();
+  }
+
+  async function commitSingle(val) {
+    const action = currentAction();
+    const outroOpt = action.outro || 'Outro';
+    let finalVal = val;
+
+    if (val === outroOpt) {
+      const text = document.getElementById('txtIn').value.trim().slice(0, MAX_TEXT_LEN);
+      if (!text) return;
+      finalVal = outroOpt + ': ' + text;
+    }
+
+    hideInput();
+    await addBubble(finalVal, 'user');
+    const key = currentQuestion().key;
+    if (key) answers[key] = finalVal;
+    step++;
+    updProg();
+    await nextStep();
+  }
+
+  async function pickScale(val, btn) {
+    const action = currentAction();
+    document.querySelectorAll('.scl-btn').forEach(function (b) { b.classList.remove('sel'); });
+    btn.classList.add('sel');
+
+    if (action.confirm) {
+      pendingScale = val;
+      showConfirm(true, true, 'Confirmar →');
+      return;
+    }
+
+    await wait(220);
+    await commitScale(val);
   }
 
   async function nextStep() {
@@ -298,6 +383,18 @@
     const q = qs[step];
     await botSay(q.msgs || [], step === 0 ? 350 : 550);
     showInput(q);
+  }
+
+  function formatAnswerForSummary(q, raw) {
+    const action = q.action || {};
+    if (raw === undefined || raw === null || raw === '') return '—';
+    if (action.type === 'scale' && action.scaleLabels) {
+      const n = Number(raw);
+      const lbl = action.scaleLabels[n];
+      return lbl ? n + ' – ' + lbl : String(raw);
+    }
+    if (Array.isArray(raw)) return raw.join('; ');
+    return String(raw);
   }
 
   async function saveAnswers() {
@@ -316,7 +413,7 @@
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
     } catch (e) {
@@ -327,15 +424,38 @@
   function renderEndCard() {
     const card = document.createElement('div');
     card.className = 'end-card';
+
     const ico = document.createElement('span');
     ico.className = 'ico';
     ico.textContent = END.emoji || '✅';
+    card.appendChild(ico);
+
     const h2 = document.createElement('h2');
     h2.textContent = END.title || 'Obrigado!';
+    card.appendChild(h2);
+
+    if (END.showSummary !== false) {
+      const sumTitle = document.createElement('h3');
+      sumTitle.className = 'end-summary-title';
+      sumTitle.textContent = END.summaryTitle || 'Resumo das suas respostas';
+      card.appendChild(sumTitle);
+
+      const list = document.createElement('dl');
+      list.className = 'end-summary';
+      qs.forEach(function (q) {
+        if (!q.key) return;
+        const dt = document.createElement('dt');
+        dt.textContent = q.label || q.key;
+        const dd = document.createElement('dd');
+        dd.textContent = formatAnswerForSummary(q, answers[q.key]);
+        list.appendChild(dt);
+        list.appendChild(dd);
+      });
+      card.appendChild(list);
+    }
+
     const p = document.createElement('p');
     p.textContent = END.text || '';
-    card.appendChild(ico);
-    card.appendChild(h2);
     card.appendChild(p);
     chat.appendChild(card);
     scrollDown();
@@ -346,6 +466,7 @@
     await saveAnswers();
     await botSay(END.botMessages || ['Obrigado pela participação!'], 600);
     renderEndCard();
+    updProg();
   }
 
   function applyHeaderConfig() {
@@ -368,16 +489,34 @@
   }
 
   window.submitMulti = submitMulti;
-  window.submitText = submitText;
+  window.submitConfirm = submitConfirm;
+  window.submitText = function () {
+    if (outroTextMode) {
+      submitConfirm();
+      return;
+    }
+    const inp = document.getElementById('txtIn');
+    const val = inp.value.trim().slice(0, MAX_TEXT_LEN);
+    if (!val) return;
+    hideInput();
+    addBubble(val, 'user').then(function () {
+      if (currentQuestion().key) answers[currentQuestion().key] = val;
+      step++;
+      updProg();
+      nextStep();
+    });
+  };
   window.onKey = function (e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      submitText();
+      if (outroTextMode) submitConfirm();
+      else window.submitText();
     }
   };
   window.autoResize = function (el) {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 90) + 'px';
+    updateOutroConfirmState();
   };
 
   window.addEventListener('DOMContentLoaded', function () {
@@ -385,6 +524,8 @@
       console.error('PESQUISA_QUESTIONS vazio — edite questions.js');
       return;
     }
+    const inp = document.getElementById('txtIn');
+    if (inp) inp.addEventListener('input', updateOutroConfirmState);
     applyHeaderConfig();
     fixHeight();
     window.addEventListener('resize', fixHeight);

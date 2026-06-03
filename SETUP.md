@@ -61,11 +61,13 @@ No repositório: **Settings → Secrets and variables → Actions → New reposi
 | `SURVEY_TITLE` | Não | Título no cabeçalho (padrão: Pesquisa Financials MM) |
 | `LOGO_URL` | Não | URL https de logo |
 
-### 2. Ativar Pages
+### 2. Ativar Pages (obrigatório antes do primeiro deploy)
 
-**Settings → Pages → Build and deployment**
+1. Abra **Settings → Pages** no repositório.
+2. Em **Build and deployment → Source**, escolha **GitHub Actions** (não “Deploy from branch”).
+3. Salve. Se não fizer isso, o workflow falha com `Get Pages site failed`.
 
-- **Source:** GitHub Actions (não “Deploy from branch”)
+Se já falhou uma vez: ative Pages como acima e rode de novo em **Actions → Deploy GitHub Pages → Re-run all jobs**.
 
 ### 3. Publicar
 
@@ -86,3 +88,13 @@ Acompanhe em **Actions**. Quando terminar, o site fica em:
 3. Confira nova linha na aba **Respostas** da planilha.
 
 **Não** commite `config.js` — ele continua no `.gitignore` e é criado só no deploy.
+
+## Respostas não aparecem na planilha?
+
+Confira nesta ordem:
+
+1. **`SPREADSHEET_ID` no Apps Script** (não no GitHub) — tem que ser o ID real da planilha, e você precisa **reimplantar** depois de alterar.
+2. **`API_SECRET` = `SUBMIT_TOKEN`** — se um estiver preenchido e o outro diferente, o script rejeita com `unauthorized`.
+3. **Logs do Apps Script** — no editor: **Execuções** (ícone relógio). Veja se o `doPost` rodou e se deu erro.
+4. **Aba correta** — respostas vão na aba **Respostas** (criada automaticamente se não existir).
+5. Faça **push** da correção do front (`Content-Type: text/plain`) e teste de novo — `application/json` costuma falhar no POST cross-origin para Apps Script.
