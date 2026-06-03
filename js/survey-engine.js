@@ -19,6 +19,7 @@
   let pendingScale = null;
   let pendingSingle = null;
   let outroTextMode = false;
+  let textConfirmMode = false;
 
   function sanitizeParam(value, maxLen) {
     if (!value) return '';
@@ -157,9 +158,32 @@
     showConfirm(false);
     const tw = document.getElementById('txtWrap');
     tw.classList.add('hidden');
-    tw.classList.remove('outro-inline');
+    tw.classList.remove('outro-inline', 'text-confirm-mode');
+    const inp = document.getElementById('txtIn');
+    inp.rows = 1;
+    inp.classList.remove('txt-in-large');
+    const counter = document.getElementById('txtCount');
+    if (counter) counter.classList.add('hidden');
     document.getElementById('scl').classList.add('hidden');
+    textConfirmMode = false;
     resetPending();
+  }
+
+  function getTextMaxLen(action) {
+    return action.maxLen || MAX_TEXT_LEN;
+  }
+
+  function updateCharCounter() {
+    const counter = document.getElementById('txtCount');
+    const inp = document.getElementById('txtIn');
+    if (!counter || !inp) return;
+    if (textConfirmMode) {
+      const maxLen = getTextMaxLen(currentAction());
+      counter.classList.remove('hidden');
+      counter.textContent = inp.value.length + ' / ' + maxLen;
+      return;
+    }
+    counter.classList.add('hidden');
   }
 
   function highlightSingleOption(val) {
@@ -183,10 +207,39 @@
   }
 
   function updateOutroConfirmState() {
-    if (!outroTextMode) return;
     const inp = document.getElementById('txtIn');
-    const hasText = inp.value.trim().length > 0;
-    showConfirm(true, hasText, 'Confirmar →');
+    if (outroTextMode) {
+      const hasText = inp.value.trim().length > 0;
+      showConfirm(true, hasText, 'Confirmar →');
+      return;
+    }
+    updateMultiConfirmState();
+  }
+
+  function multiHasOutroSelected() {
+    const outroOpt = currentAction().outro;
+    return outroOpt && multi.indexOf(outroOpt) >= 0;
+  }
+
+  function updateMultiConfirmState() {
+    const action = currentAction();
+    if (action.type !== 'multi') return;
+    const outroOpt = action.outro;
+    const count = multi.length;
+    if (outroOpt && multiHasOutroSelected()) {
+      outroTextMode = true;
+      const tw = document.getElementById('txtWrap');
+      if (tw.classList.contains('hidden')) {
+        showOutroField('Descreva o outro motivo...');
+      }
+      const hasText = document.getElementById('txtIn').value.trim().length > 0;
+      showConfirm(true, count > 0 && hasText, count > 0 ? 'Confirmar (' + count + ') →' : 'Confirmar →');
+      return;
+    }
+    outroTextMode = false;
+    document.getElementById('txtWrap').classList.add('hidden');
+    document.getElementById('txtWrap').classList.remove('outro-inline');
+    showConfirm(true, count > 0, count > 0 ? 'Confirmar (' + count + ') →' : 'Confirmar →');
   }
 
   function showInput(q) {
@@ -220,18 +273,33 @@
       });
       if (type === 'multi') {
         cfm.onclick = submitMulti;
-        showConfirm(true, false, 'Confirmar →');
+        updateMultiConfirmState();
       } else if (action.confirm) {
         cfm.onclick = submitConfirm;
         showConfirm(false);
       }
     } else if (type === 'text') {
       const tw = document.getElementById('txtWrap');
-      tw.classList.remove('hidden');
       const inp = document.getElementById('txtIn');
+      const maxLen = getTextMaxLen(action);
+      tw.classList.remove('hidden');
       inp.value = '';
-      inp.maxLength = MAX_TEXT_LEN;
+      inp.maxLength = maxLen;
       inp.placeholder = ph || 'Digite aqui...';
+      if (action.large) {
+        inp.rows = 4;
+        inp.classList.add('txt-in-large');
+      } else {
+        inp.rows = 1;
+        inp.classList.remove('txt-in-large');
+      }
+      if (action.confirm) {
+        textConfirmMode = true;
+        tw.classList.add('text-confirm-mode');
+        cfm.onclick = commitTextConfirm;
+        showConfirm(true, true, 'Confirmar →');
+        updateCharCounter();
+      }
       setTimeout(function () { inp.focus(); }, 300);
     } else if (type === 'scale') {
       const sw = document.getElementById('scl');
@@ -293,26 +361,79 @@
     await nextStep();
   }
 
+  function syncMultiOptionButtons() {
+    document.querySelectorAll('#opts .opt').forEach(function (b) {
+      b.classList.toggle('sel', multi.indexOf(b.textContent) >= 0);
+    });
+  }
+
   function toggleMulti(val, btn, max) {
+    const action = currentAction();
+    const outroOpt = action.outro;
+    const exclusiveOpt = action.exclusive;
     const idx = multi.indexOf(val);
+
     if (idx >= 0) {
       multi.splice(idx, 1);
       btn.classList.remove('sel');
+    } else if (exclusiveOpt && val === exclusiveOpt) {
+      multi = [exclusiveOpt];
+      syncMultiOptionButtons();
     } else {
+      if (exclusiveOpt) {
+        const exIdx = multi.indexOf(exclusiveOpt);
+        if (exIdx >= 0) {
+          multi.splice(exIdx, 1);
+          syncMultiOptionButtons();
+        }
+      }
       if (max && multi.length >= max) return;
       multi.push(val);
       btn.classList.add('sel');
     }
-    showConfirm(true, multi.length > 0, multi.length > 0 ? 'Confirmar (' + multi.length + ') →' : 'Confirmar →');
+
+    if (outroOpt && val === outroOpt && idx < 0) {
+      outroTextMode = true;
+      showOutroField('Descreva o outro motivo...');
+    } else if (outroOpt && idx >= 0 && val === outroOpt) {
+      outroTextMode = false;
+      document.getElementById('txtWrap').classList.add('hidden');
+      document.getElementById('txtWrap').classList.remove('outro-inline');
+    }
+    updateMultiConfirmState();
   }
 
   async function submitMulti() {
     if (!multi.length) return;
-    const val = multi.join(', ');
+    const action = currentAction();
+    const outroOpt = action.outro;
+    let saved = multi.slice();
+    if (outroOpt && multiHasOutroSelected()) {
+      const text = document.getElementById('txtIn').value.trim().slice(0, MAX_TEXT_LEN);
+      if (!text) return;
+      saved = saved.map(function (v) {
+        return v === outroOpt ? outroOpt + ': ' + text : v;
+      });
+    }
+    const val = saved.join(', ');
     hideInput();
     await addBubble(val, 'user');
     const key = currentQuestion().key;
-    if (key) answers[key] = multi.slice();
+    if (key) answers[key] = saved;
+    step++;
+    updProg();
+    await nextStep();
+  }
+
+  async function commitTextConfirm() {
+    const action = currentAction();
+    const maxLen = getTextMaxLen(action);
+    const val = document.getElementById('txtIn').value.trim().slice(0, maxLen);
+    if (!val && !action.optional) return;
+    hideInput();
+    if (val) await addBubble(val, 'user');
+    const key = currentQuestion().key;
+    if (key) answers[key] = val;
     step++;
     updProg();
     await nextStep();
@@ -387,7 +508,9 @@
 
   function formatAnswerForSummary(q, raw) {
     const action = q.action || {};
-    if (raw === undefined || raw === null || raw === '') return '—';
+    if (raw === undefined || raw === null || raw === '') {
+      return action.optional ? '(não informado)' : '—';
+    }
     if (action.type === 'scale' && action.scaleLabels) {
       const n = Number(raw);
       const lbl = action.scaleLabels[n];
@@ -490,9 +613,18 @@
 
   window.submitMulti = submitMulti;
   window.submitConfirm = submitConfirm;
+  window.commitTextConfirm = commitTextConfirm;
   window.submitText = function () {
-    if (outroTextMode) {
+    if (textConfirmMode) {
+      commitTextConfirm();
+      return;
+    }
+    if (outroTextMode && currentAction().type === 'single') {
       submitConfirm();
+      return;
+    }
+    if (outroTextMode && currentAction().type === 'multi') {
+      submitMulti();
       return;
     }
     const inp = document.getElementById('txtIn');
@@ -509,13 +641,17 @@
   window.onKey = function (e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (outroTextMode) submitConfirm();
+      if (textConfirmMode) commitTextConfirm();
+      else if (outroTextMode && currentAction().type === 'single') submitConfirm();
+      else if (outroTextMode && currentAction().type === 'multi') submitMulti();
       else window.submitText();
     }
   };
   window.autoResize = function (el) {
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 90) + 'px';
+    const cap = el.classList.contains('txt-in-large') ? 160 : 90;
+    el.style.height = Math.min(el.scrollHeight, cap) + 'px';
+    updateCharCounter();
     updateOutroConfirmState();
   };
 
@@ -525,7 +661,12 @@
       return;
     }
     const inp = document.getElementById('txtIn');
-    if (inp) inp.addEventListener('input', updateOutroConfirmState);
+    if (inp) {
+      inp.addEventListener('input', function () {
+        updateCharCounter();
+        updateOutroConfirmState();
+      });
+    }
     applyHeaderConfig();
     fixHeight();
     window.addEventListener('resize', fixHeight);

@@ -81,6 +81,10 @@ html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background
 .txt-wrap.outro-inline .send{display:none;}
 .txt-wrap.outro-inline{flex-direction:column;align-items:stretch;}
 .txt-wrap.outro-inline .txt-in{width:100%;}
+.txt-wrap.text-confirm-mode .send{display:none;}
+.txt-wrap.text-confirm-mode{flex-direction:column;align-items:stretch;}
+.txt-wrap.text-confirm-mode .txt-in{width:100%;min-height:100px;max-height:160px;}
+.txt-char-count{font-size:11px;color:var(--muted);text-align:right;width:100%;margin-top:-4px;}
 .txt-wrap{display:flex;gap:8px;align-items:flex-end;}
 .txt-in{
   flex:1;border:1.5px solid var(--border);border-radius:16px;

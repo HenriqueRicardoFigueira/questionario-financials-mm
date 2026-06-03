@@ -1,5 +1,5 @@
 /**
- * Questionário: Antecipação de Recebíveis — 6 perguntas
+ * Questionário PUA V3 — Antecipação de Recebíveis (9 perguntas)
  * Edite msgs, opções e keys conforme necessário.
  */
 
@@ -8,7 +8,7 @@ window.PESQUISA_QUESTIONS = [
     key: 'q1',
     label: 'Perfil',
     msgs: [
-      'Olá! 👋 Sou o assistente de pesquisa da MadeiraMadeira. Vou te fazer 6 perguntas rápidas sobre o processo de antecipação. Pode levar menos de 3 minutos!',
+      'Olá! 👋 Sou o assistente de pesquisa da MadeiraMadeira. Vou te fazer algumas perguntas rápidas sobre o processo de antecipação. Pode levar menos de 3 minutos!',
       'Primeiro: qual é o modelo da sua parceria atual com a MadeiraMadeira?'
     ],
     action: {
@@ -65,11 +65,11 @@ window.PESQUISA_QUESTIONS = [
     key: 'q4',
     label: 'Mapeamento de dores',
     msgs: [
-      'Qual das etapas abaixo exige mais esforço ou gera mais dúvidas na sua rotina de antecipação? Selecione até 2 opções.'
+      'Qual das etapas abaixo exige mais esforço ou gera mais dúvidas na sua rotina de antecipação? Selecione até 3 opções.'
     ],
     action: {
       type: 'multi',
-      max: 2,
+      max: 3,
       opts: [
         'Fazer login e navegar por portais diferentes',
         'Entender o saldo real disponível para antecipar',
@@ -83,6 +83,49 @@ window.PESQUISA_QUESTIONS = [
 
   {
     key: 'q5',
+    label: 'Benchmark de mercado',
+    msgs: [
+      'A sua empresa já realiza antecipação de recebíveis com outros players do mercado? Selecione todas as opções que se aplicam.'
+    ],
+    action: {
+      type: 'multi',
+      exclusive: 'Não realizo antecipação em outras plataformas',
+      opts: [
+        'Casas Bahia',
+        'Magazine Luiza',
+        'Mercado Livre',
+        'Shopee',
+        'Outras plataformas / Bancos tradicionais',
+        'Não realizo antecipação em outras plataformas'
+      ]
+    }
+  },
+
+  {
+    key: 'q6',
+    label: 'Antecipação automática',
+    msgs: [
+      'Caso houvesse uma opção para programar suas antecipações de forma que ocorressem de maneira automática (recorrente) assim que o saldo ficasse disponível, qual seria o seu nível de interesse em ativar essa funcionalidade?'
+    ],
+    action: {
+      type: 'scale',
+      min: 1,
+      max: 5,
+      confirm: true,
+      l0: '1 Nenhum interesse',
+      l10: '5 Muito interessado',
+      scaleLabels: {
+        1: 'Nenhum interesse (Prefiro avaliar e fazer manualmente caso a caso)',
+        2: 'Pouco interesse',
+        3: 'Neutro',
+        4: 'Interessado',
+        5: 'Muito interessado'
+      }
+    }
+  },
+
+  {
+    key: 'q7',
     label: 'Interesse no WhatsApp',
     msgs: [
       'Se a simulação e contratação de antecipações estivessem disponíveis via WhatsApp oficial e seguro da MadeiraMadeira, qual seria seu nível de interesse?'
@@ -105,14 +148,14 @@ window.PESQUISA_QUESTIONS = [
   },
 
   {
-    key: 'q6',
+    key: 'q8',
     label: 'Fator de decisão',
     msgs: [
-      'Por último: qual é o fator principal que influenciaria sua decisão de adotar (ou não) o WhatsApp para antecipações?'
+      'Quais fatores influenciariam sua decisão de adotar (ou não) o WhatsApp para antecipações? Selecione até 3 opções.'
     ],
     action: {
-      type: 'single',
-      confirm: true,
+      type: 'multi',
+      max: 3,
       outro: 'Outro motivo',
       opts: [
         'Praticidade de simular sem abrir navegador',
@@ -121,6 +164,22 @@ window.PESQUISA_QUESTIONS = [
         'Preferência por resolver finanças apenas no computador',
         'Outro motivo'
       ]
+    }
+  },
+
+  {
+    key: 'q9',
+    label: 'Espaço livre',
+    msgs: [
+      'Espaço livre: tem mais alguma dor, sugestão ou comentário que gostaria de compartilhar conosco sobre o processo de antecipação?'
+    ],
+    action: {
+      type: 'text',
+      confirm: true,
+      optional: true,
+      large: true,
+      maxLen: 500,
+      ph: 'Seu comentário (opcional)...'
     }
   }
 ];

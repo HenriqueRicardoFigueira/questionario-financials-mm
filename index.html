@@ -34,6 +34,7 @@
     <div class="txt-wrap hidden" id="txtWrap">
       <textarea class="txt-in" id="txtIn" placeholder="Digite aqui..." rows="1"
         maxlength="2000" oninput="autoResize(this)" onkeydown="onKey(event)"></textarea>
+      <span class="txt-char-count hidden" id="txtCount" aria-live="polite"></span>
       <button type="button" class="send" onclick="submitText()" aria-label="Enviar">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
